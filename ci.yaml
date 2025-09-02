@@ -1,0 +1,70 @@
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-prod
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: 567adddi.jais@gmail.com
+    privateKeySecretRef:
+      name: letsencrypt-prod
+    solvers:
+    - http01:
+        ingress:
+          class: nginx
+
+---
+
+# Example: Slack notification steps for GitHub Actions workflow in CD repo
+
+name: CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+
+jobs:
+  notify_start:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Notify Slack - CD started
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚀 CD deployment started for branch '${GITHUB_REF}' commit '${GITHUB_SHA}'"}' \
+            $SLACK_WEBHOOK_URL
+
+  deploy_k8s:
+    runs-on: ubuntu-latest
+    needs: notify_start
+    steps:
+      - name: Checkout CD repo
+        uses: actions/checkout@v4
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f k8s-prod/
+
+  notify_success:
+    runs-on: ubuntu-latest
+    needs: deploy_k8s
+    if: success()
+    steps:
+      - name: Notify Slack - CD SUCCESS
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"✅ CD deployment SUCCESSFUL for branch '${GITHUB_REF}' commit '${GITHUB_SHA}'"}' \
+            $SLACK_WEBHOOK_URL
+
+  notify_failure:
+    runs-on: ubuntu-latest
+    needs: deploy_k8s
+    if: failure()
+    steps:
+      - name: Notify Slack - CD FAILED
+        run: |
+          curl -X POST -H 'Content-type: application/json' \
+            --data '{"text":"❌ CD deployment FAILED for branch '${GITHUB_REF}' commit '${GITHUB_SHA}'"}' \
+            $SLACK_WEBHOOK_URL
