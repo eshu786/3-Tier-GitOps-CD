@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: backend
-          image: eshu786/backend:ce36c4ff7290de4628add06c02dad353956f6098
+          image: eshu786/backend:fb5f23522d25d234f2da3d5ce33739f913963e4f
           ports:
             - containerPort: 5000
           env:
